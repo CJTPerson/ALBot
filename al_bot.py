@@ -1,11 +1,14 @@
 # This example requires the 'message_content' intent.
 
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
 
 import discord
+from discord import app_commands
+from discord.ext import commands
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -33,94 +36,35 @@ class ALBotClient(discord.Client):
         super().__init__(**kwargs)
         self.msg = ""
         self.message_count = 0
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        await self.tree.sync()
+
 
     async def on_ready(self):
-        print(f'Logged on as {self.user}!')
-        """
-        print("Fetching guild information...")
-        server = await client.fetch_guild(server_id)
-        print("Fetching guild channels...")
-        channels = await server.fetch_channels()
-        print("Aliasing channel names...")
-        for channel in channels:
-            if channel.name in aliases.values():
-                channel_hash[channel.name] = channel
-        print("Finished generating aliases:")
-        print(channel_hash)
-        """
+        print(f'Logged on as {self.user}!')   
 
-    @client.event
+    #@client.event
     async def on_message(message):
         pass
 
     async def process_deliver(self):
-        """
-
-        print("Finished waiting")
-        print(self.msg)
-        msg_lines = self.msg.split("\n")
-        deliverables, total = {}, []
-        last_target = None
-        for line in msg_lines:
-            if total:
-                name = self.detect_name(line)
-                if name:
-                    deliverables[last_target] = "\n".join(total)
-                    last_target = name
-                    total.clear()
-            else:
-                target = self.detect_name(line)
-                if target:
-                    last_target = target
-            total.append(line)
-        # for the last sent message
-        deliverables[last_target] = "\n".join(total)
-        pprint(deliverables)
-        await self.send_messages(deliverables)
-        :return:
-        """
-        # await asyncio.sleep(WAIT_DURATION)
-
+        pass
 
     async def send_messages(self, to_what):
-        """
-        for alias, message in to_what.items():
-            channel = aliases.get(alias)
-            channel = channel_hash.get(channel)
-            if not channel:
-                continue
-            await channel.send(message)
-            self.message_count += 1
-            if self.message_count > MAX_MSG_PER_SECOND:
-                await asyncio.sleep(1)
-                self.message_count = 0
-        print("Done")
-        """
+        pass
 
     async def on_message(self, message):
         print(f'Message from {message.author.id}: {message.content}')
-        """
-        if message.author.id != bot_id:
-            return
-        if self.msg == "":
-            self.msg += message.content + "\n"
-            await self.process_deliver()
-            self.msg = ""
-        else:
-            self.msg += message.content + "\n"
-        """
 
-@commands.command()
-async def mute(self, ctx, member: discord.Member):
-    guild = ctx.guild
-    role = await guild.create_role(name='muted', hoist=True)
+client=ALBotClient(intents=intents)
 
-    all_roles = await guild.fetch_roles()
-    num_roles = len(all_roles)
-    print(f'The server has {num_roles} roles.')
-    await role.edit(reason=None, position=num_roles - 2)
-    print('Created new role!')
-    await member.add_roles(role)
-    await ctx.send(f'{member} has been muted.')
+@client.tree.command(name='create-session',description='Creates a session for AL')
+@app_commands.describe(session_name='The name of the session', max_players='The maximum number of players for a session', start_time='The date and time when the session will start')
+async def createSession(interaction: discord.Interaction, session_name: str, max_players: int, start_time: app_commands.Timestamp):
+    await interaction.response.send_message(f'Test {session_name} {max_players} {start_time}')
+
+
 
 client.run(os.environ['TOKEN'])
