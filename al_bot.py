@@ -16,7 +16,6 @@ from discord.ext import commands
 intents = discord.Intents.default()
 intents.message_content = True
 
-SERVER_ID = 1554286737931370566
 class ALBotClient(discord.Client):
     """
     1. A person starts a ticket with Ticket Bot (this bot already exists) and fills out the info about their AL game so that it creates a message with a standardized format for the AL Bot to read
@@ -50,7 +49,7 @@ class ALBotClient(discord.Client):
         print(f'Logged on as {self.user}!')
 
     async def test(self, sender, title, description, max_players, datetime):
-        server = await client.fetch_guild(SERVER_ID)
+        server = sender.guild
         post_schema = {
             # role id
             # text channel id
