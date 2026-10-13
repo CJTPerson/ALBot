@@ -1,6 +1,10 @@
 # This example requires the 'message_content' intent.
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import discord
 
 intents = discord.Intents.default()
