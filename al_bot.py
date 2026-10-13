@@ -1,6 +1,9 @@
 # This example requires the 'message_content' intent.
 
 import os
+import re
+
+from discord import client
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -13,6 +16,7 @@ from discord.ext import commands
 intents = discord.Intents.default()
 intents.message_content = True
 
+SERVER_ID = 1554286737931370566
 class ALBotClient(discord.Client):
     """
     1. A person starts a ticket with Ticket Bot (this bot already exists) and fills out the info about their AL game so that it creates a message with a standardized format for the AL Bot to read
@@ -43,6 +47,57 @@ class ALBotClient(discord.Client):
 
 
     async def on_ready(self):
+        print(f'Logged on as {self.user}!')
+
+    async def test(self, sender, title, description, max_players, datetime):
+        server = await client.fetch_guild(SERVER_ID)
+        post_schema = {
+            # role id
+            # text channel id
+            # voice channel id
+        }
+        # creates a temporary role
+        role = await server.create_role(
+            name="Player (" + title + ")",
+            colour=discord.Colour.blue(),
+            hoist=False,
+            reason="Created an AL session"
+        )
+        post_schema["role"] = role.id
+
+        category = await server.create_category(
+            name=title,
+            position=1
+        )
+        post_schema["category"] = category.id
+
+        cleaned = title
+        cleaned = re.sub(r'[^a-zA-Z0-9]', '', cleaned)
+        cleaned = "-".join([i.lower() for i in title.split(" ")])
+        # creates a temporary text channel
+        text = await server.create_text_channel(
+            name=cleaned,
+            category=category,
+            position=1,
+            topic="Text channel for the " + title + " session"
+        )
+        post_schema["text"] = text.id
+
+        voice = await server.create_voice_channel(
+            name=title + " Voice",
+            category=category,
+            position=1
+        )
+        post_schema["voice"] = voice.id
+
+        await sender.add_roles(role)
+        return post_schema
+
+    async def on_message(self, message: discord.Message):
+        print("Message:", message)
+        if message.content.startswith("$test"):
+            schema = await self.test(message.author, "Test Title", "This is a test", 6, datetime.datetime.now())
+            print("Schema: ", schema)
         print(f'Logged on as {self.user}!')   
 
     #@client.event
@@ -55,16 +110,11 @@ class ALBotClient(discord.Client):
     async def send_messages(self, to_what):
         pass
 
-    async def on_message(self, message):
-        print(f'Message from {message.author.id}: {message.content}')
-
-client=ALBotClient(intents=intents)
+client = ALBotClient(intents=intents)
 
 @client.tree.command(name='create-session',description='Creates a session for AL')
 @app_commands.describe(session_name='The name of the session', max_players='The maximum number of players for a session', start_time='The date and time when the session will start')
 async def createSession(interaction: discord.Interaction, session_name: str, max_players: int, start_time: app_commands.Timestamp):
     await interaction.response.send_message(f'Test {session_name} {max_players} {start_time}')
-
-
 
 client.run(os.environ['TOKEN'])
