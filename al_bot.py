@@ -48,7 +48,7 @@ class ALBotClient(discord.Client):
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
 
-    async def test(self, sender, title, description, max_players, datetime):
+    async def create_session(self, sender, title, description, max_players, start_time):
         server = sender.guild
 
         post_schema = {
@@ -58,35 +58,33 @@ class ALBotClient(discord.Client):
         }
 
         # Creates a temporary role
-        role = self.create_session_role(server, title)
+        role = await self.create_session_role(server, title)
         post_schema["role"] = role.id
 
         # Creates a temporary category
-        category = self.create_session_category(server, role, title)
+        category = await self.create_session_category(server, role, title)
         post_schema["category"] = category.id
 
         # Creates a temporary text channel
-        text_channel = self.create_session_text_channel(server, category, role, title)
+        text_channel = await self.create_session_text_channel(server, category, role, title)
         post_schema["text"] = text_channel.id
 
         # Creates a temporary voice channel
-        voice_channel = self.create_session_voice_channel(server, category, role, title)
+        voice_channel = await self.create_session_voice_channel(server, category, role, title)
         post_schema["voice"] = voice_channel.id
 
         await sender.add_roles(role)
 
+        await self.send_session_signup_message(sender, title, description, max_players, start_time, role, text_channel, voice_channel)
+
         return post_schema
 
     async def on_message(self, message: discord.Message):
-        print("Message:", message)
+        print("Message:", message.content)
         if message.content.startswith("$test"):
-            schema = await self.test(message.author, "Test Title", "This is a test", 6, datetime.datetime.now())
+            schema = await self.create_session(message.author, "Test Title", "This is a test", 6, datetime.now())
             print("Schema: ", schema)
-        print(f'Logged on as {self.user}!')   
-
-    #@client.event
-    async def on_message(message):
-        pass
+        print(f'Logged on as {self.user}!')
 
     async def process_deliver(self):
         pass
@@ -125,7 +123,7 @@ class ALBotClient(discord.Client):
     # Creates a session text channel
     async def create_session_text_channel(self, server, category, role, title):
         text_channel = await server.create_text_channel(
-            name=self.clean_title(title),
+            name = await self.clean_title(title),
             category=category,
             position=1,
             topic="Text channel for the " + title + " session"
@@ -143,11 +141,10 @@ class ALBotClient(discord.Client):
 
         return voice_channel
     
-        
-
     # Sends a message for when a session begins
     async def send_session_signup_message(self, dm, title, description, max_players, start_time, role, text_channel, voice_channel):
-        pass
+           game_channel = self.get_channel(843140634352156692)
+           await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}")
 
 client = ALBotClient(intents=intents)
 
