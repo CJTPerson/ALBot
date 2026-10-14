@@ -48,60 +48,43 @@ class ALBotClient(discord.Client):
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
 
-    async def test(self, sender, title, description, max_players, datetime):
+    async def create_session(self, sender, title, description, max_players, start_time):
         server = sender.guild
+
         post_schema = {
             # role id
             # text channel id
             # voice channel id
         }
-        # creates a temporary role
-        role = await server.create_role(
-            name="Player (" + title + ")",
-            colour=discord.Colour.blue(),
-            hoist=False,
-            reason="Created an AL session"
-        )
+
+        # Creates a temporary role
+        role = await self.create_session_role(server=server, title=title)
         post_schema["role"] = role.id
 
-        category = await server.create_category(
-            name=title,
-            position=1
-        )
+        # Creates a temporary category
+        category = await self.create_session_category(server=server, role=role, title=title)
         post_schema["category"] = category.id
 
-        cleaned = title
-        cleaned = re.sub(r'[^a-zA-Z0-9]', '', cleaned)
-        cleaned = "-".join([i.lower() for i in title.split(" ")])
-        # creates a temporary text channel
-        text = await server.create_text_channel(
-            name=cleaned,
-            category=category,
-            position=1,
-            topic="Text channel for the " + title + " session"
-        )
-        post_schema["text"] = text.id
+        # Creates a temporary text channel
+        text_channel = await self.create_session_text_channel(server=server, category=category, title=title)
+        post_schema["text"] = text_channel.id
 
-        voice = await server.create_voice_channel(
-            name=title + " Voice",
-            category=category,
-            position=1
-        )
-        post_schema["voice"] = voice.id
+        # Creates a temporary voice channel
+        voice_channel = await self.create_session_voice_channel(server=server, category=category, title=title)
+        post_schema["voice"] = voice_channel.id
 
         await sender.add_roles(role)
+
+        await self.send_session_signup_message(dm=sender, title=title, description=description, max_players=max_players, start_time=start_time, role=role, text_channel=text_channel, voice_channel=voice_channel)
+
         return post_schema
 
     async def on_message(self, message: discord.Message):
-        print("Message:", message)
+        print("Message:", message.content)
         if message.content.startswith("$test"):
-            schema = await self.test(message.author, "Test Title", "This is a test", 6, datetime.datetime.now())
+            schema = await self.create_session(message.author, "Test Title", "This is a test", 6, datetime.now())
             print("Schema: ", schema)
-        print(f'Logged on as {self.user}!')   
-
-    #@client.event
-    async def on_message(message):
-        pass
+        print(f'Logged on as {self.user}!')
 
     async def process_deliver(self):
         pass
@@ -109,11 +92,69 @@ class ALBotClient(discord.Client):
     async def send_messages(self, to_what):
         pass
 
+    # Cleans a title for discord's particular format
+    async def clean_title(self, title):
+        cleaned_title = title
+        cleaned_title = re.sub(r'[^a-zA-Z0-9]', '', cleaned_title)
+        cleaned_title = "-".join([i.lower() for i in title.split(" ")])
+
+        return cleaned_title
+
+    # Creates a session role
+    async def create_session_role(self, server, title):
+        role = await server.create_role(
+            name="Player (" + title + ")",
+            colour=discord.Colour.blue(),
+            hoist=False,
+            reason="Created an AL session"
+        )
+
+        return role
+    
+    # Creates a session category
+    async def create_session_category(self, server, role, title):
+        category = await server.create_category(
+            name=title,
+            position=1
+        )
+
+        await category.set_permissions(server.default_role, view_channel=False)
+        await category.set_permissions(role, view_channel=True)
+        await category.set_permissions(self.user, view_channel=True)
+        
+        return category
+
+    # Creates a session text channel
+    async def create_session_text_channel(self, server, category, title):
+        text_channel = await server.create_text_channel(
+            name = await self.clean_title(title=title),
+            category=category,
+            position=1,
+            topic="Text channel for the " + title + " session"
+        )
+
+        return text_channel
+
+    # Creates a session voice channel
+    async def create_session_voice_channel(self, server, category, title):
+        voice_channel = await server.create_voice_channel(
+            name=title + " Voice",
+            category=category,
+            position=1
+        )
+
+        return voice_channel
+    
+    # Sends a message for when a session begins
+    async def send_session_signup_message(self, dm, title, description, max_players, start_time, role, text_channel, voice_channel):
+           game_channel = self.get_channel(843140634352156692)
+           await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}")
+
 client = ALBotClient(intents=intents)
 
 @client.tree.command(name='create-session',description='Creates a session for AL')
-@app_commands.describe(session_name='The name of the session', max_players='The maximum number of players for a session', start_time='The date and time when the session will start')
-async def createSession(interaction: discord.Interaction, session_name: str, max_players: int, start_time: app_commands.Timestamp):
-    await interaction.response.send_message(f'Test {session_name} {max_players} {start_time}')
+@app_commands.describe(title='The title of the session', description='The description of the session', max_players='The maximum number of players for a session', start_time='The date and time when the session will start')
+async def create_session(interaction: discord.Interaction, title: str, description: str, max_players: int, start_time: app_commands.Timestamp):
+    await client.create_session(sender=interaction.user, title=title, description=description, max_players=max_players, start_time=start_time)
 
 client.run(os.environ['TOKEN'])
