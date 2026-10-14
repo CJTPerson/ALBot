@@ -117,6 +117,10 @@ class ALBotClient(discord.Client):
             name=title,
             position=1
         )
+
+        await category.set_permissions(server.default_role, view_channel=False)
+        await category.set_permissions(role, view_channel=True)
+        await category.set_permissions(self.user, view_channel=True)
         
         return category
 
