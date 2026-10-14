@@ -147,8 +147,9 @@ class ALBotClient(discord.Client):
     
     # Sends a message for when a session begins
     async def send_session_signup_message(self, dm, title, description, max_players, start_time, role, text_channel, voice_channel):
-           game_channel = self.get_channel(843140634352156692)
-           await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}")
+        game_channel = self.get_channel(843140634352156692)
+        message = await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}\n\nPlease react to this message with ✅ to sign up.")
+        await message.add_reaction("✅")
 
 client = ALBotClient(intents=intents)
 
