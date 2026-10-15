@@ -157,9 +157,10 @@ class ALBotClient(discord.Client):
 
     # Creates a session role
     async def create_session_role(self, server, title):
+        seed = hash(title)
         role = await server.create_role(
             name="Player (" + title + ")",
-            colour=discord.Colour.blue(),
+            colour=discord.Colour.random(seed=seed),
             hoist=False,
             reason="Created an AL session"
         )
@@ -207,7 +208,7 @@ class ALBotClient(discord.Client):
     
     # Sends a message for when a session begins
     async def send_session_signup_message(self, dm, title, description, max_players, start_time, role, text_channel, voice_channel):
-        game_channel = self.get_channel(843140634352156692)
+        game_channel = discord.utils.get(dm.guild.channels, name="al-games")
         message = await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}\n\nCurrent Players (0/{max_players}):\n\nPlease react to this message with ✅ to sign up.")
         await message.add_reaction("✅")
 
@@ -217,5 +218,6 @@ client = ALBotClient(intents=intents)
 @app_commands.describe(title='The title of the session', description='The description of the session', max_players='The maximum number of players for a session', start_time='The date and time when the session will start')
 async def create_session(interaction: discord.Interaction, title: str, description: str, max_players: int, start_time: app_commands.Timestamp):
     await client.create_session(sender=interaction.user, title=title, description=description, max_players=max_players, start_time=start_time)
+    await interaction.response.send_message(f"Session created successfully!", ephemeral=True)
 
 client.run(os.environ['TOKEN'])
