@@ -157,9 +157,10 @@ class ALBotClient(discord.Client):
 
     # Creates a session role
     async def create_session_role(self, server, title):
+        seed = hash(title)
         role = await server.create_role(
             name="Player (" + title + ")",
-            colour=discord.Colour.blue(),
+            colour=discord.Colour.random(seed=seed),
             hoist=False,
             reason="Created an AL session"
         )
