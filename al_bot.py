@@ -13,8 +13,16 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+import time
+
+
 intents = discord.Intents.default()
 intents.message_content = True
+
+SESSIONS = []
+class Session:
+    def __init__(self, message):
+        pass
 
 class ALBotClient(discord.Client):
     """
@@ -44,9 +52,11 @@ class ALBotClient(discord.Client):
     async def setup_hook(self):
         await self.tree.sync()
 
-
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
+        for guild in self.fetch_guilds():
+            messages = ALBotClient.servers_al_games(guild).history(None)
+
 
     async def create_session(self, sender, title, description, max_players, start_time):
         server = sender.guild
@@ -205,11 +215,18 @@ class ALBotClient(discord.Client):
         substring = message.content[message.content.index(var_name+": ")+len(var_name)+2:]
         substring = substring[:substring.index("\n")]
         return substring
-    
+
+    @staticmethod
+    def al_games_channel(member):
+        return discord.utils.get(member.guild.channels, name="al-games")
+
+    @staticmethod
+    def servers_al_games(guild) -> discord.TextChannel:
+        return discord.utils.get(guild.channels, name="al-games")
+
     # Sends a message for when a session begins
     async def send_session_signup_message(self, dm, title, description, max_players, start_time, role, text_channel, voice_channel):
-        game_channel = discord.utils.get(dm.guild.channels, name="al-games")
-        message = await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}\n\nCurrent Players (0/{max_players}):\n\nPlease react to this message with ✅ to sign up.")
+        message = await ALBotClient.al_games_channel(dm).send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}\n\nCurrent Players (0/{max_players}):\n\nPlease react to this message with ✅ to sign up.")
         await message.add_reaction("✅")
 
 client = ALBotClient(intents=intents)
