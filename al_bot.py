@@ -86,6 +86,61 @@ class ALBotClient(discord.Client):
             print("Schema: ", schema)
         print(f'Logged on as {self.user}!')
 
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        channel = self.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        reactor = await self.fetch_user(payload.user_id)
+        server = await self.fetch_guild(payload.guild_id)
+        role = await server.fetch_role((await self.extract_var(message=message, var_name="Role"))[3:-1])
+        member = await server.fetch_member(payload.user_id)
+        dm = await self.fetch_user((await self.extract_var(message=message, var_name="DM"))[2:-1])
+
+        if message.author == self.user and reactor != self.user and message.content.endswith("\nPlease react to this message with ✅ to sign up.") and payload.emoji.name=="✅":
+            if reactor == dm:
+                await message.remove_reaction(emoji="✅",member=reactor)
+                await reactor.send(f"You are the DM, you cannot play your own game.")
+            else:
+                substring_1 = message.content[message.content.index("\nCurrent Players (")+18:]
+                current_player_count = int(substring_1[:substring_1.index("/")])
+                max_players = int(await self.extract_var(message=message, var_name="Max Players"))
+                title = await self.extract_var(message=message, var_name="Title")
+
+                if current_player_count < max_players:
+                    for i in range(current_player_count+1):
+                        substring_2 = substring_1[substring_1.index("\n")+1:]
+                    new_message = message.content[:-len(substring_1)]+str(current_player_count+1)+substring_1[substring_1.index("/"):-len(substring_2)] + f"- {reactor.mention}\n"+substring_2
+
+                    await message.edit(content=new_message)
+                    await reactor.send(f"Joined {title}.")
+                    await member.add_roles(role)
+                else:
+                    await message.remove_reaction(emoji="✅",member=reactor)
+                    await reactor.send(f"{title} is full!")
+
+    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        channel = self.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        reactor = await self.fetch_user(payload.user_id)
+        server = await self.fetch_guild(payload.guild_id)
+        role = await server.fetch_role((await self.extract_var(message=message, var_name="Role"))[3:-1])
+        member = await server.fetch_member(payload.user_id)
+        dm = await self.fetch_user((await self.extract_var(message=message, var_name="DM"))[2:-1])
+
+        if message.author == self.user and reactor != self.user and reactor != dm and message.content.endswith("\nPlease react to this message with ✅ to sign up.") and payload.emoji.name=="✅":
+            substring_1 = message.content[message.content.index("\nCurrent Players (")+18:]
+            current_player_count = int(substring_1[:substring_1.index("/")])
+            title = await self.extract_var(message=message, var_name="Title")
+
+            if substring_1.find(reactor.mention)!=-1:
+                substring_2 = substring_1[substring_1.find(reactor.mention)-2:]
+                substring_3 = substring_2[substring_2.index("\n")+1:]
+                new_message = message.content[:-len(substring_1)]+str(current_player_count-1)+substring_1[substring_1.index("/"):-len(substring_2)] + substring_3
+
+                await message.edit(content=new_message)
+                await reactor.send(f"Left {title}.")
+                await member.remove_roles(role)
+
+
     async def process_deliver(self):
         pass
 
@@ -144,11 +199,16 @@ class ALBotClient(discord.Client):
         )
 
         return voice_channel
+
+    async def extract_var(self, message, var_name):
+        substring = message.content[message.content.index(var_name+": ")+len(var_name)+2:]
+        substring = substring[:substring.index("\n")]
+        return substring
     
     # Sends a message for when a session begins
     async def send_session_signup_message(self, dm, title, description, max_players, start_time, role, text_channel, voice_channel):
         game_channel = self.get_channel(843140634352156692)
-        message = await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}\n\nPlease react to this message with ✅ to sign up.")
+        message = await game_channel.send(f"DM: {dm.mention}\nTitle: {title}\nDescription: {description}\nMax Players: {max_players} \nStart Time: <t:{int(start_time.timestamp())}:F>\n\nRole: {role.mention}\nText Channel: {text_channel.mention}\nVoice Channel: {voice_channel.mention}\n\nCurrent Players (0/{max_players}):\n\nPlease react to this message with ✅ to sign up.")
         await message.add_reaction("✅")
 
 client = ALBotClient(intents=intents)
